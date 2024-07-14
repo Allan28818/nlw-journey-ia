@@ -8,6 +8,7 @@ from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain.agents import create_react_agent, AgentExecutor
 from langchain import hub
 
+import json
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.vectorstores import Chroma
 import bs4
@@ -18,19 +19,17 @@ from langchain_core.runnables import RunnableSequence
 
 llm = ChatOpenAI(model="gpt-3.5-turbo", api_key=os.getenv("OPENAI_API_KEY"))
 
-query = """
-Vou viajar para Londres em agosto de 2024. Quero que faça um roteiro de viagem para mim com eventos que irão ocorrer na data da viagem e com o preço de passagem de São Paulo para Londres.
-"""
+# query = """
+# Vou viajar para Londres em agosto de 2024. Quero que faça um roteiro de viagem para mim com eventos que irão ocorrer na data da viagem e com o preço de passagem de São Paulo para Londres.
+# """
 
 def researchAgent(query, llm):
   tools = load_tools(["ddg-search", "wikipedia"], llm=llm)
   prompt = hub.pull("hwchase17/react", api_key=os.getenv("OPENAI_API_KEY"))
   agent = create_react_agent(llm, tools, prompt)
-  agent_executor = AgentExecutor(agent=agent, tools=tools, prompt=prompt, verbose=True)
+  agent_executor = AgentExecutor(agent=agent, tools=tools, prompt=prompt)
   webContext = agent_executor.invoke({"input": query})
   return webContext["output"]
-
-print(researchAgent(query, llm))
 
 def loadData():
   loader = WebBaseLoader(
@@ -47,8 +46,7 @@ def loadData():
 
 def getRelevantDocs(query):
   retriever = loadData()
-  relevant_documents = retriever.invoke(query)
-  print(relevant_documents)
+  relevant_documents = retriever.invoke(query)  
   return relevant_documents
 
 def supervisorAgent(query, llm, webContext, relevant_documents):
@@ -79,4 +77,19 @@ def getResponse(query, llm):
 
   return response
 
-print(getResponse(query, llm).content)
+# print(getResponse(query, llm).content)
+
+def lambda_handler(event, context):
+  body = json.loads(event.get("body", {}))
+  query = body.get("question", "Parâmetro question não fornecido")
+  response = getResponse(query, llm).content
+  return { 
+    "statusCode": 200,
+    "headers": {
+      "Content-Type": "application/json",      
+    },
+    "body": json.dumps({
+      "message": "Tarefa concluída com sucesso!",
+      "details": response
+    }), 
+  }

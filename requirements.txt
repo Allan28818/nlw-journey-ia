@@ -1,0 +1,11 @@
+python-dotenv
+langchain-openai 
+langchain-community
+langchain
+langchainhub
+bs4
+langchain-text-splitters
+langchain-core
+duckduckgo-search
+wikipedia
+chromadb
